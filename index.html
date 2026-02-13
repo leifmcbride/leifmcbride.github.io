@@ -8,9 +8,16 @@
 
   <style>
     html, body { height: 100%; margin: 0; }
-    #frame { width: 100%; height: 100%; border: 0; display: block; }
-
- </style>
+    #frame {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: #000;
+    }
+  </style>
 
   <script>
     const TIME_ZONE = "America/Chicago";
@@ -38,12 +45,12 @@
       const end = 14 * 60 + 25;      // 2:25 PM
       const seg = (end - start) / 8; // 55.625 minutes
 
-      if (mins < start) return 0;
-      if (mins >= start && mins < end) {
+      if (mins < start) return 0; // midnight -> 7:00 AM
+      if (mins < end) {
         const i = Math.floor((mins - start) / seg); // 0..7
         return 1 + Math.min(Math.max(i, 0), 7);     // 1..8
       }
-      return 9;
+      return 9; // 2:25 PM -> midnight
     }
 
     function loadSlot(slot) {
@@ -63,7 +70,10 @@
 
 <body>
   <!-- The chosen website is loaded here (URL stays the same) -->
-  <iframe id="frame"></iframe>
+  <iframe id="frame" title="content"></iframe>
+</body>
+</html>
+
 
   <!-- ==========================================================
        ✅ ALL YOU DO: PASTE FULL HTML BETWEEN EACH PAIR OF MARKERS
