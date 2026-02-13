@@ -1,25 +1,4 @@
 <!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Single Slot Loader (24/7 Test)</title>
-
-<script>
-/*
-  This version loads ONE website 24/7.
-  It uses a backtick template string.
-  We escape backticks automatically before writing.
-*/
-
-/* ============================================================
-   🔽 PASTE YOUR FULL HTML BELOW 🔽
-   Replace ONLY the text between START and END.
-   Do NOT remove the surrounding backticks.
-   ============================================================ */
-
-const SITE_0 = `
-<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -147,7 +126,6 @@ const SITE_0 = `
     }
     .search button:hover{background:#2a2a2a}
 
-    /* Profile/avatar removed; keep as spacer */
     .actions{
       display:flex;
       align-items:center;
@@ -259,9 +237,7 @@ const SITE_0 = `
       aspect-ratio:16/9;
     }
 
-    /* YouTube IFrame Player API mounts an iframe inside #player */
     #player{width:100%; height:100%;}
-
     .watch-title{margin:12px 0 8px; font-size:18px; line-height:1.3; font-weight:700;}
     .watch-sub{color:var(--muted); font-size:13px; margin:0 0 12px;}
     .panel{
@@ -319,7 +295,6 @@ const SITE_0 = `
       </div>
     </div>
 
-    <!-- avatar removed -->
     <div class="actions"></div>
   </header>
 
@@ -345,7 +320,6 @@ const SITE_0 = `
         <div class="watch-shell">
           <div class="watch">
             <div class="player-wrap" id="playerWrap">
-              <!-- YouTube IFrame Player API mounts into this div -->
               <div id="player"></div>
             </div>
 
@@ -362,11 +336,27 @@ const SITE_0 = `
     </main>
   </div>
 
-  <!-- YouTube IFrame Player API -->
-  <script src="https://www.youtube.com/iframe_api"></script>
+  <!-- Load the YouTube IFrame API AFTER DOM is ready -->
+  <script defer src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    const API_KEY = "AIzaSyBz9TOmiO7jYkhZZu4hzDMyD4npURoz99Y";
+    // =========================
+    // SET YOUR KEY HERE
+    // =========================
+    const API_KEY = "APIKEYPLACEHOLDER";
+
+    // Hard fail early if you forgot to set it
+    if (!API_KEY || API_KEY === "APIKEYPLACEHOLDER") {
+      const box = document.getElementById("error");
+      box.style.display = "block";
+      box.textContent =
+        "Missing API key. Replace APIKEYPLACEHOLDER with your YouTube Data API v3 key.\n\n" +
+        "GitHub Pages note: in Google Cloud Console, restrict the key by HTTP referrers, e.g.:\n" +
+        "https://YOURUSERNAME.github.io/*\n" +
+        "and enable YouTube Data API v3 for that key.";
+      throw new Error("Missing API key");
+    }
+
     const MAX_RESULTS = 20;
     const REGION_CODE = "US";
 
@@ -393,7 +383,7 @@ const SITE_0 = `
 
     const suggestBox = document.getElementById("suggest");
 
-    let currentMode = "home"; // home | search | watch
+    let currentMode = "home";
     let currentQuery = "";
     let nextPageToken = "";
     let homeNextPageToken = "";
@@ -401,26 +391,18 @@ const SITE_0 = `
 
     const itemsById = new Map();
 
-    // YouTube Player API
     let ytPlayer = null;
     let ytReady = false;
 
+    // This is called by the iframe_api script when it’s ready
     window.onYouTubeIframeAPIReady = () => {
       ytReady = true;
       ytPlayer = new YT.Player("player", {
         width: "100%",
         height: "100%",
         videoId: "",
-        playerVars: {
-          autoplay: 1,
-          rel: 0,
-          modestbranding: 1,
-          playsinline: 1,
-          controls: 1
-        },
-        events: {
-          onError: (e) => showError("YouTube player error: " + e.data)
-        }
+        playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1, controls: 1 },
+        events: { onError: (e) => showError("YouTube player error: " + e.data) }
       });
     };
 
@@ -612,7 +594,7 @@ const SITE_0 = `
         addCards(collected);
       }catch(err){
         showError(
-          `Error: ${err.message}\n\nFixes:\n- Enable YouTube Data API v3\n- Use HTTP referrer restrictions (browser app)\n- Restrict key to YouTube Data API v3\n- Check quota`
+          `Error: ${err.message}\n\nFixes:\n- Enable YouTube Data API v3\n- Restrict key to YouTube Data API v3\n- If restricted by HTTP referrers, add:\n  https://YOURUSERNAME.github.io/*\n- Check quota`
         );
         hint.style.display = "none";
       }finally{
@@ -711,7 +693,6 @@ const SITE_0 = `
       const st = item.statistics || {};
       const cd = item.contentDetails || {};
 
-      // Load via YouTube IFrame Player API
       const id = item.id;
       if (ytPlayer && ytReady){
         ytPlayer.loadVideoById(id);
@@ -783,7 +764,7 @@ const SITE_0 = `
     }
 
     let suggestTimer = null;
-    async function fetchSuggestions(typed){
+    function fetchSuggestions(typed){
       const t = typed.trim();
       if (!t){
         hideSuggestions();
@@ -795,6 +776,7 @@ const SITE_0 = `
         try{
           const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(t)}`;
           const res = await fetch(url);
+          if (!res.ok) throw new Error("Suggest request failed");
           const data = await res.json();
           const list = Array.isArray(data?.[1]) ? data[1] : [];
           showSuggestions(list, t);
@@ -833,28 +815,5 @@ const SITE_0 = `
 
     loadHome(true);
   </script>
-</body>
-</html>
-
-`;
-
-/* ============================================================
-   DO NOT EDIT BELOW
-   ============================================================ */
-
-// Escape protection so your internal backticks don’t break it
-function safelyRender(html) {
-  document.open();
-  document.write(html);
-  document.close();
-}
-
-// Always load SITE_0 (24/7)
-safelyRender(SITE_0);
-
-</script>
-
-</head>
-<body>
 </body>
 </html>
