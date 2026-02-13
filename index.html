@@ -25,8 +25,6 @@
 
       --watchMax:1280px;
       --watchPad:18px;
-
-      --fadeDelayMs:3000; /* 3 seconds */
     }
 
     *{box-sizing:border-box}
@@ -128,14 +126,8 @@
     }
     .search button:hover{background:#2a2a2a}
 
-    /* Profile/avatar removed; keep as spacer */
-    .actions{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      min-width:120px;
-      justify-content:flex-end;
-    }
+    /* Profile/avatar removed; keep spacer */
+    .actions{min-width:120px;}
 
     .app{
       display:grid;
@@ -239,9 +231,8 @@
       width:100%;
       aspect-ratio:16/9;
     }
-    /* Player API replaces iframe with its own iframe inside #player */
+    /* Player API mounts iframe inside #player */
     #player{width:100%; height:100%;}
-
     .watch-title{margin:12px 0 8px; font-size:18px; line-height:1.3; font-weight:700;}
     .watch-sub{color:var(--muted); font-size:13px; margin:0 0 12px;}
     .panel{
@@ -250,60 +241,6 @@
       border:1px solid rgba(255,255,255,.06);
       border-radius:var(--radius);
       padding:12px;
-    }
-
-    /* Fullscreen button overlay */
-    .fs-btn{
-      position:absolute;
-      right:12px;
-      bottom:12px;
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-      padding:12px 16px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(0,0,0,.55);
-      color:var(--text);
-      cursor:pointer;
-      font-weight:800;
-      letter-spacing:0.2px;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
-      user-select:none;
-
-      opacity:1;
-      transform: translateY(0) scale(1);
-      transition: opacity 220ms ease, transform 220ms ease;
-      z-index: 3;
-    }
-    .fs-btn:hover{background:rgba(0,0,0,.7)}
-    .fs-btn .ms{font-variation-settings:"wght" 650}
-
-    .fs-btn.fade-out{
-      opacity:0;
-      transform: translateY(10px) scale(0.98);
-      pointer-events:none;
-    }
-
-    .fs-btn.pop{
-      animation: popIn 180ms ease-out;
-    }
-    @keyframes popIn{
-      from { transform: translateY(10px) scale(0.96); opacity:0; }
-      to   { transform: translateY(0) scale(1); opacity:1; }
-    }
-
-    /* Activity layer: catches pointer movement even though the player is an iframe */
-    .activity-layer{
-      position:absolute;
-      inset:0;
-      z-index:2;
-      background:transparent;
-    }
-    /* Let YouTube receive interactions by default */
-    .activity-layer.pass-through{
-      pointer-events:none;
     }
 
     .suggest{
@@ -333,18 +270,6 @@
     .suggest-strong{font-weight:700}
 
     #sentinel{height:1px;}
-
-    /* Nice fullscreen sizing (real fullscreen uses UA stylesheet sizing, but keep this) */
-    .player-wrap:fullscreen{
-      border-radius: 0;
-      width: 100vw;
-      height: 100vh;
-      aspect-ratio: auto;
-    }
-    .player-wrap:fullscreen #player{
-      width: 100%;
-      height: 100%;
-    }
   </style>
 </head>
 
@@ -365,7 +290,7 @@
       </div>
     </div>
 
-    <!-- profile avatar removed -->
+    <!-- profile/avatar removed -->
     <div class="actions"></div>
   </header>
 
@@ -391,16 +316,7 @@
         <div class="watch-shell">
           <div class="watch">
             <div class="player-wrap" id="playerWrap">
-              <!-- YouTube IFrame Player API mounts into this div -->
               <div id="player"></div>
-
-              <!-- Activity layer: catches mouse movement reliably (iframe can't) -->
-              <div id="activityLayer" class="activity-layer pass-through" aria-hidden="true"></div>
-
-              <button id="fsBtn" class="fs-btn" type="button" title="Fullscreen (F) / Exit (Esc)">
-                <span class="ms">fullscreen</span>
-                <span>Fullscreen</span>
-              </button>
             </div>
 
             <div id="watchTitle" class="watch-title"></div>
@@ -427,8 +343,6 @@
     const HOME_MIN_SECONDS = 61;
     const HOME_TARGET = 28;
 
-    const FADE_DELAY_MS = 3000;
-
     const q = document.getElementById("q");
     const searchBtn = document.getElementById("searchBtn");
     const brandBtn = document.getElementById("brandBtn");
@@ -444,8 +358,6 @@
     const watchView = document.getElementById("watchView");
 
     const playerWrap = document.getElementById("playerWrap");
-    const fsBtn = document.getElementById("fsBtn");
-    const activityLayer = document.getElementById("activityLayer");
 
     const watchTitle = document.getElementById("watchTitle");
     const watchStats = document.getElementById("watchStats");
@@ -460,10 +372,6 @@
     let isFetching = false;
 
     const itemsById = new Map();
-
-    // Overlay fade timers
-    let idleTimer = null;
-    let allowCaptureTimer = null;
 
     // YouTube Player API
     let ytPlayer = null;
@@ -728,7 +636,6 @@
       nextPageToken = "";
 
       hideSuggestions();
-      exitRealFullscreenIfNeeded();
 
       watchView.style.display = "none";
       resultsView.style.display = "block";
@@ -776,7 +683,6 @@
       const st = item.statistics || {};
       const cd = item.contentDetails || {};
 
-      // Load video via Player API
       const id = item.id;
       if (ytPlayer && ytReady){
         ytPlayer.loadVideoById(id);
@@ -798,119 +704,16 @@
 
       watchDesc.textContent = sn.description || "";
 
-      // Ensure button visible and fade cycle armed when watching
-      showOverlayNow(true);
-      armIdleFade();
-
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     function goHome(){
-      exitRealFullscreenIfNeeded();
       watchView.style.display = "none";
       resultsView.style.display = "block";
       if (ytPlayer) ytPlayer.stopVideo();
       loadHome(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-
-    // ---------------------------
-    // Fullscreen (REAL) + overlay
-    // ---------------------------
-
-    function popOnce(){
-      fsBtn.classList.remove("pop");
-      void fsBtn.offsetWidth;
-      fsBtn.classList.add("pop");
-    }
-
-    function showOverlayNow(withPop){
-      const wasHidden = fsBtn.classList.contains("fade-out");
-      fsBtn.classList.remove("fade-out");
-      if (withPop && wasHidden) popOnce();
-    }
-    function hideOverlayNow(){
-      fsBtn.classList.add("fade-out");
-    }
-
-    function armIdleFade(){
-      clearTimeout(idleTimer);
-      idleTimer = setTimeout(()=> hideOverlayNow(), FADE_DELAY_MS);
-    }
-    function disarmIdleFade(){
-      clearTimeout(idleTimer);
-      idleTimer = null;
-      fsBtn.classList.remove("fade-out");
-    }
-
-    // Activity layer strategy:
-    // - normally pass-through so YouTube is usable
-    // - when in real fullscreen and controls fade, we briefly enable capture on movement
-    function enableActivityCapture(ms = 1200){
-      clearTimeout(allowCaptureTimer);
-      activityLayer.classList.remove("pass-through");
-      allowCaptureTimer = setTimeout(()=>{
-        activityLayer.classList.add("pass-through");
-      }, ms);
-    }
-
-    function onActivityMove(){
-      if (!document.fullscreenElement) return;
-      // enable capture briefly so we keep seeing moves
-      enableActivityCapture(1200);
-      showOverlayNow(true);
-      armIdleFade();
-    }
-
-    activityLayer.addEventListener("pointermove", onActivityMove, { passive:true });
-    activityLayer.addEventListener("mousemove", onActivityMove, { passive:true });
-
-    async function toggleRealFullscreen(){
-      try{
-        if (!document.fullscreenElement){
-          await playerWrap.requestFullscreen();
-          enableActivityCapture(1200);
-          showOverlayNow(true);
-          armIdleFade();
-        } else {
-          await document.exitFullscreen();
-        }
-      }catch(err){
-        showError("Fullscreen failed: " + err.message);
-      }
-    }
-
-    function exitRealFullscreenIfNeeded(){
-      if (document.fullscreenElement){
-        document.exitFullscreen().catch(()=>{});
-      }
-    }
-
-    document.addEventListener("fullscreenchange", ()=>{
-      if (document.fullscreenElement){
-        enableActivityCapture(1200);
-        showOverlayNow(true);
-        armIdleFade();
-      } else {
-        disarmIdleFade();
-        activityLayer.classList.add("pass-through");
-      }
-    });
-
-    // If user tries to click/drag the video, let YouTube have it
-    // (we keep the overlay capture only briefly when needed)
-    activityLayer.addEventListener("mousedown", ()=> {
-      activityLayer.classList.add("pass-through");
-      enableActivityCapture(0); // immediately re-capture after timeout logic runs
-    });
-    activityLayer.addEventListener("touchstart", ()=> {
-      activityLayer.classList.add("pass-through");
-      enableActivityCapture(0);
-    }, { passive:true });
-
-    // ---------------------------
-    // Suggestions
-    // ---------------------------
 
     function showSuggestions(items, typed){
       if (!items.length){
@@ -972,10 +775,6 @@
       }, 120);
     }
 
-    // ---------------------------
-    // Infinite scroll (home)
-    // ---------------------------
-
     const io = new IntersectionObserver((entries)=>{
       const entry = entries[0];
       if (!entry.isIntersecting) return;
@@ -985,10 +784,6 @@
     }, { root: null, threshold: 0.1 });
 
     io.observe(sentinel);
-
-    // ---------------------------
-    // Events
-    // ---------------------------
 
     searchBtn.addEventListener("click", doSearchFromUI);
 
@@ -1006,29 +801,6 @@
 
     brandBtn.addEventListener("click", goHome);
     homeNav.addEventListener("click", goHome);
-
-    fsBtn.addEventListener("click", toggleRealFullscreen);
-
-    document.addEventListener("keydown", (e)=>{
-      const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
-      const typing = (tag === "input" || tag === "textarea");
-
-      if (e.key === "Escape"){
-        // ESC exits real fullscreen automatically in most browsers, but ensure overlay state
-        if (document.fullscreenElement){
-          e.preventDefault();
-          document.exitFullscreen().catch(()=>{});
-        }
-        return;
-      }
-
-      if (!typing && (e.key === "f" || e.key === "F")){
-        if (watchView.style.display !== "none"){
-          e.preventDefault();
-          toggleRealFullscreen();
-        }
-      }
-    });
 
     loadHome(true);
   </script>
