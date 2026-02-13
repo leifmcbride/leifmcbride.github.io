@@ -3,89 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Time Based Loader</title>
+<title>Single Slot Loader (24/7 Test)</title>
 
 <script>
 /*
-TIME STRUCTURE:
-
-Slot 0  → 12:00 AM - 7:00 AM
-Slot 1  → 7:00 AM - 7:55:37.5
-Slot 2  → 7:55:37.5 - 8:51:15
-Slot 3  → 8:51:15 - 9:46:52.5
-Slot 4  → 9:46:52.5 - 10:42:30
-Slot 5  → 10:42:30 - 11:38:07.5
-Slot 6  → 11:38:07.5 - 12:33:45
-Slot 7  → 12:33:45 - 1:29:22.5
-Slot 8  → 1:29:22.5 - 2:25:00
-Slot 9  → 2:25 PM - 12:00 AM
+  This version loads ONE website 24/7.
+  It uses a backtick template string.
+  We escape backticks automatically before writing.
 */
 
-const TIME_ZONE = "America/Chicago";
-
-function getMinutes() {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: TIME_ZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23"
-  });
-
-  const parts = fmt.formatToParts(new Date());
-  const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
-
-  return (
-    Number(map.hour) * 60 +
-    Number(map.minute) +
-    Number(map.second) / 60
-  );
-}
-
-function pickSlot(mins) {
-  const start = 420; // 7:00 AM
-  const end = 865;   // 2:25 PM
-  const span = end - start;
-  const segment = span / 8;
-
-  if (mins < start) return 0;
-
-  if (mins >= start && mins < end) {
-    const offset = mins - start;
-    const index = Math.floor(offset / segment);
-    return 1 + Math.min(index, 7);
-  }
-
-  return 9;
-}
-
 /* ============================================================
-   🔽🔽🔽 PUT YOUR FULL WEBSITES BELOW 🔽🔽🔽
-   Replace ONLY the text that says:
-   REPLACE_THIS_WITH_YOUR_FULL_WEBSITE_X
+   🔽 PASTE YOUR FULL HTML BELOW 🔽
+   Replace ONLY the text between START and END.
+   Do NOT remove the surrounding backticks.
    ============================================================ */
 
-const SITES = [
-
-``, // Slot 0
-
-`REPLACE_THIS_WITH_YOUR_FULL_WEBSITE_1`, // Slot 1
-
-`REPLACE_THIS_WITH_YOUR_FULL_WEBSITE_2`, // Slot 2
-
-`REPLACE_THIS_WITH_YOUR_FULL_WEBSITE_3`, // Slot 3
-
-`REPLACE_THIS_WITH_YOUR_FULL_WEBSITE_4`, // Slot 4
-
-`REPLACE_THIS_WITH_YOUR_FULL_WEBSITE_5`, // Slot 5
-
-`REPLACE_THIS_WITH_YOUR_FULL_WEBSITE_6`, // Slot 6
-
-`REPLACE_THIS_WITH_YOUR_FULL_WEBSITE_7`, // Slot 7
-
-`REPLACE_THIS_WITH_YOUR_FULL_WEBSITE_8`, // Slot 8
-
-`<!doctype html>
+const SITE_0 = `
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -900,23 +834,24 @@ const SITES = [
     loadHome(true);
   </script>
 </body>
-</html>`  // Slot 9
+</html>
 
-];
+`;
 
 /* ============================================================
-   DO NOT EDIT BELOW THIS LINE
+   DO NOT EDIT BELOW
    ============================================================ */
 
-(function () {
-  const mins = getMinutes();
-  const slot = pickSlot(mins);
-  const html = SITES[slot];
-
+// Escape protection so your internal backticks don’t break it
+function safelyRender(html) {
   document.open();
   document.write(html);
   document.close();
-})();
+}
+
+// Always load SITE_0 (24/7)
+safelyRender(SITE_0);
+
 </script>
 
 </head>
